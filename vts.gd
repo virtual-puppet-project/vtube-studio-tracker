@@ -3,10 +3,16 @@ extends TrackingBackendTrait
 ## https://github.com/DenchiSoft/VTubeStudio
 ## https://github.com/Inochi2D/facetrack-d/blob/main/source/ft/adaptors/vtsproto.d
 
+const ConfigTrackerAddress: String = "VTUBE_STUDIO_TRACKER_ADDRESS"
+
+const EMPTY_VEC3_DICT := {"x": 0.0, "y": 0.0, "z": 0.0}
+
+var tracking_data := {}
+
 var logger := Logger.new(get_name())
 
 var client: PacketPeerUDP
-var server_poll_interval: int = 100
+var server_poll_interval: int = 10
 
 var stop_reception := false
 
@@ -34,42 +40,46 @@ func _perform_reception() -> void:
 
 func _receive() -> void:
 	client.put_packet(JSON.print({
-		"messsageType": "iOSTrackingDataRequest",
+		"messsageType": "iOSTrackingDataRequest", # HMMMM
 		"time": 1.0,
-		"sentBy": "asdf",
+		"sentBy": "vpuppr",
 		"ports": [
 			21412
 		]
 	}).to_utf8())
+	
 	if client.get_available_packet_count() < 1:
+		logger.info("not enough packets")
 		return
 	if client.get_packet_error() != OK:
-		logger.error("Last packet had an error: %d" % client.get_packet_error())
+		logger.info("packet error")
 		return
 	
 	var packet := client.get_packet()
 	if packet.size() < 1:
+		logger.info("packet too small")
 		return
-
-	print(packet.get_string_from_utf8())
+	
+	tracking_data = parse_json(packet.get_string_from_utf8())
 
 #-----------------------------------------------------------------------------#
 # Public functions                                                            #
 #-----------------------------------------------------------------------------#
 
 func get_name() -> String:
-	return "VTubeStudio"
+	return tr("VTUBE_STUDIO_TRACKER_NAME")
 
 func start_receiver() -> void:
-	# TODO many of these values are stubs
-
 	logger.info("Starting receiver")
 
-	var address: String = ""
+#	var address: String = AM.cm.get_data(ConfigTrackerAddress)
+	var address: String = "192.168.88.229"
 	var port: int = 21412
-
+	
 	client = PacketPeerUDP.new()
-	client.connect_to_host(address, port)
+	client.set_broadcast_enabled(true)
+	client.set_dest_address(address, port)
+	client.listen(port)
 
 	stop_reception = false
 
@@ -87,8 +97,8 @@ func stop_receiver() -> void:
 	if receive_thread != null and receive_thread.is_active():
 		receive_thread.wait_to_finish()
 		receive_thread = null
-
-	if client.is_connected_to_host():
+	
+	if client != null and client.is_connected_to_host():
 		client.close()
 		client = null
 
@@ -96,7 +106,28 @@ func set_offsets() -> void:
 	pass
 
 func has_data() -> bool:
-	return true # TODO stub
+	return not tracking_data.empty()
 
-func apply(interpolation_data: InterpolationData, _model: PuppetTrait) -> void:
-	pass
+func apply(interpolation_data: InterpolationData, model: PuppetTrait) -> void:
+	if not tracking_data.get("FaceFound", false):
+		return
+	
+	var tx: Dictionary = tracking_data.get("Position", EMPTY_VEC3_DICT)
+	var rx: Dictionary = tracking_data.get("Rotation", EMPTY_VEC3_DICT)
+	
+	interpolation_data.bone_translation.target_value = Vector3(-tx.y, -tx.x, tx.z)
+	interpolation_data.bone_rotation.target_value = Vector3(-rx.y, -rx.x, rx.z)
+	interpolation_data.left_gaze.target_value = JSONUtil.dict_to_vector3(
+		tracking_data.get("EyeLeft", EMPTY_VEC3_DICT)) / 100.0
+	interpolation_data.right_gaze.target_value = JSONUtil.dict_to_vector3(
+		tracking_data.get("EyeRight", EMPTY_VEC3_DICT)) / 100.0
+	
+	for data in tracking_data.get("BlendShapes", []):
+		match data.k:
+			"eyeBlinkLeft":
+				interpolation_data.left_blink.target_value = 1.0 - data.v
+			"eyeBlinkRight":
+				interpolation_data.right_blink.target_value = 1.0 - data.v
+			_:
+				for mesh_instance in model.skeleton.get_children():
+					mesh_instance.set("blend_shapes/%s" % data.k, data.v)

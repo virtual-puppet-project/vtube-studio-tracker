@@ -1,0 +1,16 @@
+VTUBE_STUDIO_EXTENSION="VTube Studio"
+
+VTUBE_STUDIO_TRACKER_NAME="VTubeStudioTracker"
+
+VTUBE_STUDIO_USAGE_LABEL_TEXT="Click to start tracking.
+
+Requires VTube Studio installed on an Android device.
+
+NOTE: Currently does not work even though the API should be same between this and MeowFace"
+
+VTUBE_STUDIO_TRACKER_ADDRESS_LABEL_TEXT="IP address: "
+VTUBE_STUDIO_IP_ADDRESS_HINT="The IP address of the device running VTube Studio. Should not include the port."
+
+VTUBE_STUDIO_TOGGLE_TRACKING_START="Start"
+VTUBE_STUDIO_TOGGLE_TRACKING_STOP="Stop"
+VTUBE_STUDIO_TOGGLE_TRACKING_BUTTON_HINT="Toggle tracking"

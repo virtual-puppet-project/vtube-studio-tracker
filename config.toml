@@ -1,0 +1,10 @@
+[extension]
+name = "VTubeStudio"
+translation_key = "VTUBE_STUDIO_EXTENSION"
+
+[[resources]]
+name = "Tracker"
+tags = ["tracker"]
+entrypoint="vts.gd"
+gui="gui.gd"
+translation-key = "VTUBE_STUDIO_EXTENSION"
