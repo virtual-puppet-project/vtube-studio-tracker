@@ -49,18 +49,17 @@ func _receive() -> void:
 	}).to_utf8())
 	
 	if client.get_available_packet_count() < 1:
-		logger.info("not enough packets")
 		return
 	if client.get_packet_error() != OK:
-		logger.info("packet error")
 		return
 	
 	var packet := client.get_packet()
 	if packet.size() < 1:
-		logger.info("packet too small")
 		return
 	
-	tracking_data = parse_json(packet.get_string_from_utf8())
+	var parsed_dictionary: Dictionary = parse_json(packet.get_string_from_utf8())
+	for key in parsed_dictionary.keys():
+		tracking_data[key] = parsed_dictionary[key]
 
 #-----------------------------------------------------------------------------#
 # Public functions                                                            #
@@ -72,8 +71,7 @@ func get_name() -> String:
 func start_receiver() -> void:
 	logger.info("Starting receiver")
 
-#	var address: String = AM.cm.get_data(ConfigTrackerAddress)
-	var address: String = "192.168.88.229"
+	var address: String = AM.cm.get_data(ConfigTrackerAddress)
 	var port: int = 21412
 	
 	client = PacketPeerUDP.new()
